@@ -1,52 +1,57 @@
-function getCookies() {
-    const cookies = document.cookie.split('; ');
-    const cookieObj = {};
-    cookies.forEach(cookie => {
-        const [name, value] = cookie.split('=');
-        cookieObj[name] = decodeURIComponent(value);
-    });
-    return cookieObj;
+function getCookie(name) {
+    let cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        let [key, value] = cookie.trim().split('=');
+        if (key === name) return decodeURIComponent(value);
+    }
+    return null;
 }
 
-function saveToDoList() {
-    const todoList = [];
-    $('#ft_list').children().each(function () {
-        todoList.push($(this).text());
-    });
-    document.cookie = `todoList=${encodeURIComponent(JSON.stringify(todoList))}; path=/;`;
+function setCookie(name, value, days) {
+    let expires = '';
+    if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = `; expires=${date.toUTCString()}`;
+    }
+    document.cookie = `${name}=${encodeURIComponent(value || '')}${expires}; path=/`;
 }
 
-function loadToDoList() {
-    const cookies = getCookies();
-    if (cookies.todoList) {
-        const todoList = JSON.parse(cookies.todoList);
-        $.each(todoList, function (index, item) {
-            addToDo(item);
+$(document).ready(function() {
+    let tasks = getCookie('tasks');
+    if (tasks) {
+        tasks = JSON.parse(tasks);
+        tasks.reverse().forEach(task => {
+            addTaskToDOM(task);
         });
     }
-}
 
-function addToDo(taskText) {
-    const newTask = $('<div></div>').text(taskText).on('click', function () {
-        const confirmDelete = confirm("Do you want to remove this TO DO?");
-        if (confirmDelete) {
-            $(this).remove();
-            saveToDoList();
+    $('#newTaskButton').on('click', function() {
+        const task = prompt('Enter your new task:');
+        if (task) {
+            addTaskToDOM(task);
+            saveTasks();
         }
     });
-
-    $('#ft_list').prepend(newTask);
-    saveToDoList();
-}
-
-function createNewTask() {
-    const task = prompt("Enter a new TO DO:");
-    if (task) {
-        addToDo(task);
-    }
-}
-
-$(document).ready(function () {
-    $('#newTaskButton').on('click', createNewTask);
-    loadToDoList();
 });
+
+function saveTasks() {
+    const tasks = [];
+    $('.todo-item').each(function() {
+        tasks.push($(this).text());
+    });
+    setCookie('tasks', JSON.stringify(tasks), 7); 
+}
+
+function addTaskToDOM(task) {
+    const taskDiv = $('<div></div>').addClass('todo-item').text(task);
+    
+    taskDiv.on('click', function() {
+        if (confirm(`Do you want to delete this task: "${task}"?`)) {
+            $(this).remove();
+            saveTasks();
+        }
+    });
+    
+    $('#ft_list').prepend(taskDiv); 
+}
